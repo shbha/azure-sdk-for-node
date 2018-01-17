@@ -1,3 +1,14 @@
+### 2.3.0 (12/18/2017)
+- Added support for processing formData parameters by setting the `"form"` property on the request object when the `'Content-Type'` header is `'application/x-www-form-urlencoded'`. This needs to be done since we depend on the [request library](https://github.com/request/request#applicationx-www-form-urlencoded-url-encoded-forms).
+
+### 2.2.9 (12/15/2017)
+- Runtime now populates polymorphic discriminator value if it is missing in both serialization and deserialization.
+
+### 2.2.8 (12/14/2017)
+- Constant values should be deserialized.
+- Added support to [de]serialize `additionalProperties`, if specified in the mapper.
+- Describes more properties in the TS type definition of `WebResource`.
+
 ### 2.2.7 (11/17/2017)
 - Added support to set formData parameters in the request object while preparing the request.
 
@@ -23,6 +34,7 @@
 ### 2.2.0 (4/29/2017)
 - Minor bug fix in `WebResource.prepare()` while processing query parameters.
 - Removed native references to `Buffer.isBuffer()` and stream and replaced it with packages that are browser compatible.
+
 ### 2.1.0 (4/14/2017)
 - Ensured `'use strict';` is applied correctly in all the files #2131
 - Modified the handling of `Content-Type` request header in `Webresource.prepare()` #2126

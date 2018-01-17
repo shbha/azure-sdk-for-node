@@ -289,7 +289,7 @@ describe('msrest', function () {
       try {
         serializedArray = msRest.serialize(mapper, array, 'arrayObj');
       } catch (err) {
-        assert.equal(err.message, 'arrayObj cannot be null or undefined.');
+        assert.equal(err.message, 'arrayObj[2][0] cannot be null or undefined.');
       }
       done();
     });
@@ -522,6 +522,39 @@ describe('msrest', function () {
       serializedPetGallery.pets[1].id.should.equal(3);
       serializedPetGallery.pets[1].name.should.equal('billa');
       serializedPetGallery.pets[1].color.should.equal('red');
+      done();
+    });
+
+    it('should correctly serialize additionalProperties when the mapper knows that additional properties are allowed', function (done) {
+      var bodyParameter = {
+        id: 5,
+        name: 'Funny',
+        odatalocation: 'westus',
+        additionalProperties1: {
+          height: 5.61,
+          weight: 599,
+          footsize: 11.5
+        },
+        color: 'red',
+        city: 'Seattle',
+        food: 'tikka masala',
+        birthdate: new Date('2017-12-13T02:29:51Z')
+      };
+      var client = new testClient('http://localhost:9090');
+      var petAP = new client.models['PetAP']();
+      mapper = petAP.mapper();
+      var result = client.serialize(mapper, bodyParameter, 'bodyParameter');
+      result.id.should.equal(5);
+      result.eyeColor.should.equal('brown');
+      result['@odata.location'].should.equal('westus');
+      result.color.should.equal('red');
+      result.city.should.equal('Seattle');
+      result.food.should.equal('tikka masala');
+      result.additionalProperties.height.should.equal(5.61);
+      result.additionalProperties.weight.should.equal(599);
+      result.additionalProperties.footsize.should.equal(11.5);
+      result.name.should.equal('Funny');
+      result.birthdate.should.equal('2017-12-13T02:29:51.000Z');
       done();
     });
   });
@@ -829,6 +862,126 @@ describe('msrest', function () {
       deserializedSawshark.siblings[0].siblings[0].fishtype.should.equal('mutatedshark');
       deserializedSawshark.siblings[0].siblings[0].species.should.equal('predator');
       deserializedSawshark.siblings[0].siblings[0].should.not.have.property('age');
+      done();
+    });
+
+    it('should correctly deserialize additionalProperties when the mapper knows that additional properties are allowed', function (done) {
+      var responseBody = {
+        id: 5,
+        name: 'Funny',
+        status: true,
+        '@odata.location': 'westus',
+        additionalProperties: {
+          height: 5.61,
+          weight: 599,
+          footsize: 11.5
+        },
+        color: 'red',
+        city: 'Seattle',
+        food: 'tikka masala',
+        birthdate: '2017-12-13T02:29:51Z'
+      };
+      var client = new testClient('http://localhost:9090');
+      var petAP = new client.models['PetAP']();
+      mapper = petAP.mapper();
+      var result = client.deserialize(mapper, responseBody, 'responseBody');
+      result.id.should.equal(5);
+      result.status.should.equal(true);
+      result.eyeColor.should.equal('brown');
+      result.odatalocation.should.equal('westus');
+      result.color.should.equal('red');
+      result.city.should.equal('Seattle');
+      result.food.should.equal('tikka masala');
+      result.birthdate.should.equal('2017-12-13T02:29:51Z');
+      result.additionalProperties1.height.should.equal(5.61);
+      result.additionalProperties1.weight.should.equal(599);
+      result.additionalProperties1.footsize.should.equal(11.5);
+      result.name.should.equal('Funny');
+      done();
+    });
+
+    it('should correctly deserialize without failing when encountering no discriminator', function (done) {
+      var client = new testClient('http://localhost:9090');
+      var fish = new client.models['Fish']();
+      mapper = fish.mapper();
+      var responseBody = {
+        'age': 22,
+        'birthday': new Date('2012-01-05T01:00:00Z').toISOString(),
+        'species': 'king',
+        'length': 1.0,
+        'picture': new Buffer([255, 255, 255, 255, 254]).toString(),
+        'siblings': [
+          {
+            'fish.type': 'mutatedshark',
+            'age': 105,
+            'birthday': new Date('1900-01-05T01:00:00Z').toISOString(),
+            'length': 10.0,
+            'picture': new Buffer([255, 255, 255, 255, 254]).toString(),
+            'species': 'dangerous',
+            'siblings': [
+              {
+                'fish.type': 'mutatedshark',
+                'age': 6,
+                'length': 20.0,
+                'species': 'predator'
+              }
+            ]
+          }
+        ]
+      };
+      var deserializedSawshark = client.deserialize(mapper, responseBody, 'responseBody');
+      deserializedSawshark.fishtype.should.equal("Fish");
+      deserializedSawshark.siblings.length.should.equal(1);
+      deserializedSawshark.siblings[0].fishtype.should.equal('mutatedshark');
+      deserializedSawshark.siblings[0].species.should.equal('dangerous');
+      deserializedSawshark.siblings[0].should.not.have.property('birthday');
+      deserializedSawshark.siblings[0].should.not.have.property('age');
+      deserializedSawshark.siblings[0].siblings[0].fishtype.should.equal('mutatedshark');
+      deserializedSawshark.siblings[0].siblings[0].species.should.equal('predator');
+      deserializedSawshark.siblings[0].siblings[0].should.not.have.property('age');
+      done();
+    });
+
+    it('should correctly serialize without failing when encountering no discriminator', function (done) {
+      var client = new testClient('http://localhost:9090');
+      var SawsharkModel = new client.models['Sawshark']();
+      mapper = SawsharkModel.mapper();
+      var sawshark = {
+        'age': 22,
+        'birthday': new Date('2012-01-05T01:00:00Z'),
+        'species': 'king',
+        'length': 1.0,
+        'picture': new Buffer([255, 255, 255, 255, 254]),
+        'siblings': [
+          {
+            'fishtype': 'shark',
+            'age': 6,
+            'birthday': new Date('2012-01-05T01:00:00Z'),
+            'length': 20.0,
+            'species': 'predator'
+          },
+          {
+            'fishtype': 'sawshark',
+            'age': 105,
+            'birthday': new Date('1900-01-05T01:00:00Z'),
+            'length': 10.0,
+            'picture': new Buffer([255, 255, 255, 255, 254]),
+            'species': 'dangerous'
+          }
+        ]
+      };
+      var serializedSawshark = client.serialize(mapper, sawshark, 'result');
+      serializedSawshark.age.should.equal(22);
+      serializedSawshark['fish.type'].should.equal('sawshark');
+      serializedSawshark.siblings.length.should.equal(2);
+      serializedSawshark.siblings[0]['fish.type'].should.equal('shark');
+      serializedSawshark.siblings[0].age.should.equal(6);
+      serializedSawshark.siblings[0].birthday.should.equal(new Date('2012-01-05T01:00:00Z').toISOString());
+      serializedSawshark.siblings[1]['fish.type'].should.equal('sawshark');
+      serializedSawshark.siblings[1].age.should.equal(105);
+      serializedSawshark.siblings[1].birthday.should.equal(new Date('1900-01-05T01:00:00Z').toISOString());
+      serializedSawshark.siblings[1].picture.should.equal('//////4=');
+      serializedSawshark.picture.should.equal('//////4=');
       done();
     });
   });
